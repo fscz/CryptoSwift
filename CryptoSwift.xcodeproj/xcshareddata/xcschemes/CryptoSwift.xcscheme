@@ -54,9 +54,6 @@
             </BuildableReference>
             <SkippedTests>
                <Test
-                  Identifier = "AESTests/testAESPerformance()">
-               </Test>
-               <Test
                   Identifier = "AESTests/testAESPerformanceCommonCrypto()">
                </Test>
                <Test

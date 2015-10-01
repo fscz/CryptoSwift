@@ -7,6 +7,12 @@
 //
 
 extension Array where Element: _UInt8Type {
+    func toUInt32Array(bigEndian bigEndian: Bool = true) -> Array<UInt32> {
+        return self[self.startIndex..<self.endIndex].toUInt32Array(bigEndian: bigEndian)
+    }
+}
+
+extension Array where Element: _UInt8Type {
     
     public func toHexString() -> String {
         return self.lazy.reduce("") { $0 + String(format:"%02x", $1 as! UInt8) }
