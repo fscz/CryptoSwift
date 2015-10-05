@@ -46,8 +46,8 @@ final public class AES {
     private let key:[UInt8]
     private let iv:[UInt8]?
     
-    lazy var keySchedule:[UInt32] = { return [UInt32](count: (self.variant.Nr + 1) * 4, repeatedValue: 0) }()
-    lazy var invKeySchedule:[UInt32] = { [UInt32](count: (self.variant.Nr + 1) * 4, repeatedValue: 0) }()
+    var keySchedule:[UInt32] = [UInt32](count: 15 * 4, repeatedValue: 0)
+    var invKeySchedule:[UInt32] = [UInt32](count: 15 * 4, repeatedValue: 0)
 
     let RCON:[UInt32] = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36]
     var SBOX = [UInt32](count: 256, repeatedValue: 0)
@@ -108,7 +108,7 @@ final public class AES {
     
     private func encryptBlock(block:[UInt8]) -> [UInt8]? {
         let nRounds = self.variant.Nr
-        var M = block[block.startIndex..<block.endIndex].toUInt32Array(bigEndian: false)
+        let M = block[block.startIndex..<block.endIndex].toUInt32Array(bigEndian: false)
         
         var s0 = M[0] ^ keySchedule[0]
         var s1 = M[1] ^ keySchedule[1]
@@ -119,44 +119,71 @@ final public class AES {
         var ksRow = 4
         
         // Rounds
-        for (var round = 1; round < nRounds; round++) {
+        for _ in 1..<nRounds {
             // Shift rows, sub bytes, mix columns, add round key
-            let t0 = SUB_MIX_0[s0 >> 24] ^ SUB_MIX_1[(s1 >> 16) & 0xff] ^ SUB_MIX_2[(s2 >> 8) & 0xff] ^ SUB_MIX_3[s3 & 0xff] ^ keySchedule[ksRow++]
-            let t1 = SUB_MIX_0[s1 >> 24] ^ SUB_MIX_1[(s2 >> 16) & 0xff] ^ SUB_MIX_2[(s3 >> 8) & 0xff] ^ SUB_MIX_3[s0 & 0xff] ^ keySchedule[ksRow++]
-            let t2 = SUB_MIX_0[s2 >> 24] ^ SUB_MIX_1[(s3 >> 16) & 0xff] ^ SUB_MIX_2[(s0 >> 8) & 0xff] ^ SUB_MIX_3[s1 & 0xff] ^ keySchedule[ksRow++]
-            let t3 = SUB_MIX_0[s3 >> 24] ^ SUB_MIX_1[(s0 >> 16) & 0xff] ^ SUB_MIX_2[(s1 >> 8) & 0xff] ^ SUB_MIX_3[s2 & 0xff] ^ keySchedule[ksRow++]
+            var t0 = SUB_MIX_0[s0 >> 24]
+                t0 ^= SUB_MIX_1[(s1 >> 16) & 0xff]
+                t0 ^= SUB_MIX_2[(s2 >> 8) & 0xff]
+                t0 ^= SUB_MIX_3[s3 & 0xff]
+                t0 ^= keySchedule[ksRow++]
+            var t1 = SUB_MIX_0[s1 >> 24]
+                t1 ^= SUB_MIX_1[(s2 >> 16) & 0xff]
+                t1 ^= SUB_MIX_2[(s3 >> 8) & 0xff]
+                t1 ^= SUB_MIX_3[s0 & 0xff]
+                t1 ^= keySchedule[ksRow++]
+            var t2 = SUB_MIX_0[s2 >> 24]
+                t2 ^= SUB_MIX_1[(s3 >> 16) & 0xff]
+                t2 ^= SUB_MIX_2[(s0 >> 8) & 0xff]
+                t2 ^= SUB_MIX_3[s1 & 0xff]
+                t2 ^= keySchedule[ksRow++]
+            var t3 = SUB_MIX_0[s3 >> 24]
+                t3 ^= SUB_MIX_1[(s0 >> 16) & 0xff]
+                t3 ^= SUB_MIX_2[(s1 >> 8) & 0xff]
+                t3 ^= SUB_MIX_3[s2 & 0xff]
+                t3 ^= keySchedule[ksRow++]
             
             // Update state
-            s0 = t0;
-            s1 = t1;
-            s2 = t2;
-            s3 = t3;
+            s0 = t0
+            s1 = t1
+            s2 = t2
+            s3 = t3
         }
         
         // Shift rows, sub bytes, add round key
-        var t0 = ((SBOX[s0 >> 24] << 24) | (SBOX[(s1 >> 16) & 0xff] << 16) | (SBOX[(s2 >> 8) & 0xff] << 8) | SBOX[s3 & 0xff])
+        var t0 =  SBOX[s0 >> 24] << 24
+            t0 |= SBOX[(s1 >> 16) & 0xff] << 16
+            t0 |= SBOX[(s2 >> 8) & 0xff] << 8
+            t0 |= SBOX[s3 & 0xff]
             t0 ^= keySchedule[ksRow++]
-        var t1 = ((SBOX[s1 >> 24] << 24) | (SBOX[(s2 >> 16) & 0xff] << 16) | (SBOX[(s3 >> 8) & 0xff] << 8) | SBOX[s0 & 0xff])
+        var t1 =  SBOX[s1 >> 24] << 24
+            t1 |= SBOX[(s2 >> 16) & 0xff] << 16
+            t1 |= SBOX[(s3 >> 8) & 0xff] << 8
+            t1 |= SBOX[s0 & 0xff]
             t1 ^= keySchedule[ksRow++]
-        var t2 = ((SBOX[s2 >> 24] << 24) | (SBOX[(s3 >> 16) & 0xff] << 16) | (SBOX[(s0 >> 8) & 0xff] << 8) | SBOX[s1 & 0xff])
+        var t2 =  SBOX[s2 >> 24] << 24
+            t2 |= SBOX[(s3 >> 16) & 0xff] << 16
+            t2 |= SBOX[(s0 >> 8) & 0xff] << 8
+            t2 |= SBOX[s1 & 0xff]
             t2 ^= keySchedule[ksRow++]
-        var t3 = ((SBOX[s3 >> 24] << 24) | (SBOX[(s0 >> 16) & 0xff] << 16) | (SBOX[(s1 >> 8) & 0xff] << 8) | SBOX[s2 & 0xff])
+        var t3 =  SBOX[s3 >> 24] << 24
+            t3 |= SBOX[(s0 >> 16) & 0xff] << 16
+            t3 |= SBOX[(s1 >> 8) & 0xff] << 8
+            t3 |= SBOX[s2 & 0xff]
             t3 ^= keySchedule[ksRow++]
         
         // Set output
-        M[0] = t0
-        M[1] = t1
-        M[2] = t2
-        M[3] = t3
+//        M[0] = t0
+//        M[1] = t1
+//        M[2] = t2
+//        M[3] = t3
         
         var out = [UInt8]()
         out.reserveCapacity(M.count * 4)
-        for e in M.lazy.enumerate() {
-            let num = M[e.index]
-            out.append(UInt8((num >> 24) & 0xff))
-            out.append(UInt8((num >> 16) & 0xff))
-            out.append(UInt8((num >> 8) & 0xff))
-            out.append(UInt8(num & 0xff))
+        [t0, t1, t2, t3].forEach {
+            out.append(UInt8(($0 >> 24) & 0xff))
+            out.append(UInt8(($0 >> 16) & 0xff))
+            out.append(UInt8(($0 >> 8) & 0xff))
+            out.append(UInt8($0 & 0xff))
         }
         
         return out
@@ -197,12 +224,28 @@ final public class AES {
         var ksRow = 4
         
         // Rounds
-        for (var round = 1; round < nRounds; round++) {
+        for _ in 1..<nRounds {
             // Shift rows, sub bytes, mix columns, add round key
-            let t0 = INV_SUB_MIX_0[s0 >> 24] ^ INV_SUB_MIX_1[(s1 >> 16) & 0xff] ^ INV_SUB_MIX_2[(s2 >> 8) & 0xff] ^ INV_SUB_MIX_3[s3 & 0xff] ^ invKeySchedule[ksRow++]
-            let t1 = INV_SUB_MIX_0[s1 >> 24] ^ INV_SUB_MIX_1[(s2 >> 16) & 0xff] ^ INV_SUB_MIX_2[(s3 >> 8) & 0xff] ^ INV_SUB_MIX_3[s0 & 0xff] ^ invKeySchedule[ksRow++]
-            let t2 = INV_SUB_MIX_0[s2 >> 24] ^ INV_SUB_MIX_1[(s3 >> 16) & 0xff] ^ INV_SUB_MIX_2[(s0 >> 8) & 0xff] ^ INV_SUB_MIX_3[s1 & 0xff] ^ invKeySchedule[ksRow++]
-            let t3 = INV_SUB_MIX_0[s3 >> 24] ^ INV_SUB_MIX_1[(s0 >> 16) & 0xff] ^ INV_SUB_MIX_2[(s1 >> 8) & 0xff] ^ INV_SUB_MIX_3[s2 & 0xff] ^ invKeySchedule[ksRow++]
+            var t0 = INV_SUB_MIX_0[s0 >> 24]
+                t0 ^= INV_SUB_MIX_1[(s1 >> 16) & 0xff]
+                t0 ^= INV_SUB_MIX_2[(s2 >> 8) & 0xff]
+                t0 ^= INV_SUB_MIX_3[s3 & 0xff]
+                t0 ^= invKeySchedule[ksRow++]
+            var t1 = INV_SUB_MIX_0[s1 >> 24]
+                t1 ^= INV_SUB_MIX_1[(s2 >> 16) & 0xff]
+                t1 ^= INV_SUB_MIX_2[(s3 >> 8) & 0xff]
+                t1 ^= INV_SUB_MIX_3[s0 & 0xff]
+                t1 ^= invKeySchedule[ksRow++]
+            var t2 = INV_SUB_MIX_0[s2 >> 24]
+                t2 ^= INV_SUB_MIX_1[(s3 >> 16) & 0xff]
+                t2 ^= INV_SUB_MIX_2[(s0 >> 8) & 0xff]
+                t2 ^= INV_SUB_MIX_3[s1 & 0xff]
+                t2 ^= invKeySchedule[ksRow++]
+            var t3 = INV_SUB_MIX_0[s3 >> 24]
+                t3 ^= INV_SUB_MIX_1[(s0 >> 16) & 0xff]
+                t3 ^= INV_SUB_MIX_2[(s1 >> 8) & 0xff]
+                t3 ^= INV_SUB_MIX_3[s2 & 0xff]
+                t3 ^= invKeySchedule[ksRow++]
             
             // Update state
             s0 = t0;
@@ -212,14 +255,26 @@ final public class AES {
         }
         
         // Shift rows, sub bytes, add round key
-        var t0 = ((INV_SBOX[s0 >> 24] << 24) | (INV_SBOX[(s1 >> 16) & 0xff] << 16) | (INV_SBOX[(s2 >> 8) & 0xff] << 8) | INV_SBOX[s3 & 0xff])
-        t0 ^= invKeySchedule[ksRow++]
-        var t1 = ((INV_SBOX[s1 >> 24] << 24) | (INV_SBOX[(s2 >> 16) & 0xff] << 16) | (INV_SBOX[(s3 >> 8) & 0xff] << 8) | INV_SBOX[s0 & 0xff])
-        t1 ^= invKeySchedule[ksRow++]
-        var t2 = ((INV_SBOX[s2 >> 24] << 24) | (INV_SBOX[(s3 >> 16) & 0xff] << 16) | (INV_SBOX[(s0 >> 8) & 0xff] << 8) | INV_SBOX[s1 & 0xff])
-        t2 ^= invKeySchedule[ksRow++]
-        var t3 = ((INV_SBOX[s3 >> 24] << 24) | (INV_SBOX[(s0 >> 16) & 0xff] << 16) | (INV_SBOX[(s1 >> 8) & 0xff] << 8) | INV_SBOX[s2 & 0xff])
-        t3 ^= invKeySchedule[ksRow++]
+        var t0 =  INV_SBOX[s0 >> 24] << 24
+            t0 |= INV_SBOX[(s1 >> 16) & 0xff] << 16
+            t0 |= INV_SBOX[(s2 >> 8) & 0xff] << 8
+            t0 |= INV_SBOX[s3 & 0xff]
+            t0 ^= invKeySchedule[ksRow++]
+        var t1 =  INV_SBOX[s1 >> 24] << 24
+            t1 |= INV_SBOX[(s2 >> 16) & 0xff] << 16
+            t1 |= INV_SBOX[(s3 >> 8) & 0xff] << 8
+            t1 |= INV_SBOX[s0 & 0xff]
+            t1 ^= invKeySchedule[ksRow++]
+        var t2 =  INV_SBOX[s2 >> 24] << 24
+            t2 |= INV_SBOX[(s3 >> 16) & 0xff] << 16
+            t2 |= INV_SBOX[(s0 >> 8) & 0xff] << 8
+            t2 |= INV_SBOX[s1 & 0xff]
+            t2 ^= invKeySchedule[ksRow++]
+        var t3 =  INV_SBOX[s3 >> 24] << 24
+            t3 |= INV_SBOX[(s0 >> 16) & 0xff] << 16
+            t3 |= INV_SBOX[(s1 >> 8) & 0xff] << 8
+            t3 |= INV_SBOX[s2 & 0xff]
+            t3 ^= invKeySchedule[ksRow++]
         
         // Set output
         M[0] = t0
